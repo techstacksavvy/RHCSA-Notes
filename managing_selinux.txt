@@ -1,0 +1,16 @@
+System Enhanced Linux(SELinux)
+
+-The primary goal of SELinux is to protect user data from system services that have been compromised.
+
+Changing the SELinux Enforcement Mode
+
+-preferred method to set the SELinux context for a file is to declare the default labeling for a file using the semanage fcontext command and then applying that 
+ context to the file using the restorecon command.
+
+Controlling SELinux File Contexts 
+
+
+Adjusting SELinux Policy with Booleans
+
+
+Investigating and Resolving SELinux Issues

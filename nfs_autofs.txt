@@ -1,0 +1,133 @@
+Mounting Network-Attached Storage with NFS
+
+NFS(Network File System)
+-an internet standard protocol used by Linux
+-used as a native network file system (for Linux, UNIX,etc.) 
+-supports native Linux permissions and file-system features
+
+1.NFS servers export shares (directories). 
+2.NFS clients mount an exported share to a local mount point (directory), 
+  which must exist. 
+3.NFS shares can be mounted a number of ways:
+  - Manually, using the mount command.
+
+  - Automatically at boot time using /etc/fstab entries.
+
+  - On demand, using either the autofs service or the systemd.automount 
+    facility. 
+
+Mounting NFS Shares
+
+Steps:
+
+1.Identify
+  Ex:
+   a. sudo mkdir mountpoint
+   b. sudo mount serverb:/ mountpoint
+   c. sudo ls mountpoint
+
+2.Create Mount Point
+  Ex:
+   - mkdir -p mountpoint
+
+3.Mount NFS
+  Ex1:Mount temporarily
+   a. via mount cmd
+      sudo mount -t nfs -o rw,sync serverb:/share mountpoint
+
+**"-t" optionis the file system type
+**"-o sync" option tells mount to immediately synchronize write operations 
+  with the NFS server (the default is asynchronous)
+
+Important!
+The method above mounts the share immediately but NOT persistently
+
+ OR...
+  
+  Ex2:Mount persistently
+   a. via /etc/fstab config file
+      sudo vim /etc/fstab
+      (entry) - serverb:/share  /mountpoint  nfs  rw,soft  0 0
+
+   b. then,
+      sudo mount /mountpoint
+
+**************
+
+Unmmounting NFS Shares
+
+1.sudo umount mountpoint
+
+
+------------------------------------------
+
+Mounting NFS Shares with the Automounter(autofs)
+
+automounter;
+- is a service (autofs) that automatically mounts NFS shares "on-demand," and will automatically 
+  unmount NFS shares when they are no longer being used
+
+Creat an automount
+
+Steps:
+
+1.Install the autofs package.
+  Ex:
+   - sudo yum install autofs
+
+2.Add a master map file to /etc/auto.master.d.
+  Ex:
+   - sudo vim /etc/auto.master.d/demo.autofs
+   - entry --> /shares  /etc/auto.demo
+
+**this file identifies the base directory used for mount points and identifies the mapping file used 
+  for creating the automounts.
+
+**must have an extension of .autofs for the subsystem to recognize it.**
+
+3.Create the mapping files.
+  Ex:
+   - sudo vim /etc/auto.demo
+   - entry --> work  -rw,sync  serverb:/shares/work
+
+**the mapping file-naming convention is /etc/auto.name, where name reflects the content of the map.
+
+**the format of an entry is mount point, mount options, and source location.
+
+4.Start and enable the automounter service.
+  Ex:
+   - sudo systemctl enable --now autofs
+
+***************************************
+
+Direct Maps
+ 
+- used to map an NFS share to an existing absolute path mount point
+- direct map entries use "/-" as the base directory
+
+The master map file might appear as follows:
+Ex:
+   /-  /etc/auto.direct
+
+The content for the /etc/auto.direct file might appear as follows:
+Ex:
+  /mnt/docs  -rw,sync  serverb:/shares/docs
+
+**The mount point (or key) is always an absolute path. 
+  The rest of the mapping file uses the same structure.
+
+Indirect Wildcard Maps
+
+When an NFS server exports multiple subdirectories within a directory, then the automounter 
+can be configured to access any one of those subdirectories using a single mapping entry.
+
+Continuing the previous example, if serverb:/shares exports two or more subdirectories and they 
+are accessible using the same mount options, then the content for the /etc/auto.demo file might 
+appear as follows:
+
+Ex:
+   *  -rw,sync  serverb:/shares/&
+
+**The mount point (or key) is an asterisk character (*), and the subdirectory on the source 
+  location is an ampersand character (&). Everything else in the entry is the same.
+

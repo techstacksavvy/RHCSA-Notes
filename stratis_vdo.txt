@@ -1,0 +1,162 @@
+Managing Layered Storage with Stratis
+
+Stratis is a new local storage-management solution. 
+
+Stratis is designed to...
+-make performing initial configuration of storage easier 
+-make changes to the storage configuration
+-use advanced storage features
+
+-Stratis is implemented using the Device Mapper infrastructure 
+ that is also used to implement LVM, and 
+**Stratis-managed file systems are formatted using XFS
+
+**Block storage devices (i.e. hard disks or SSDs) are assigned to pools, 
+  each contributing some physical storage to the pool. File systems are 
+  created from the pools, and physical storage is mapped to each file system 
+  as it is needed.
+
+Important!!!
+**File systems created by Stratis should only be reconfigured with Stratis 
+  tools and commands.
+**Stratis uses stored metadata to recognize managed pools, volumes, and 
+  file systems. Manually configuring Stratis file systems with non-Stratis 
+  commands can cause the loss of that metadata and prevent Stratis from 
+  recognizing the file systems it created.
+
+Assembling Block Storage into Stratis Pools
+
+Steps:
+
+1.Install and enable Stratis
+  Ex:
+  - yum install stratis-cli stratisd -y
+  - systemctl enable --now stratisd
+
+2.Create pools of one or more block devices using the stratis pool create command.
+  Ex:
+   - stratis pool create pool1 /dev/vdb
+
+3.Use the stratis pool list command to view the list of available pools.
+  Ex: 
+   - stratis pool list
+
+**The stratis pool list command shows you how much storage space is 
+  in use (and therefore how much is still available) in the pools.
+  If a pool runs out of storage, further data written to file systems 
+  belonging to that pool is quietly lost.
+
+4.Use the stratis pool add-data command to add additional block devices to a pool.
+  Ex:
+   - stratis pool add-data pool1 /dev/vdc
+
+5.Use the stratis blockdev list command to view the block devices of a pool.
+  Ex:
+   - stratis blockdev list pool1
+
+--------------------------------------------
+
+Managing Stratis File Systems
+
+Steps:
+
+1.Use the stratis filesystem create command to create a file system from a pool.
+  Ex:
+   - stratis filesystem create pool1 fs1
+
+**The links to the Stratis file systems are in the /stratis/pool1 directory.
+
+2.Use the stratis filesystem list command to view the list of available file systems.
+  Ex:
+   - stratis filesystem list
+
+Important!!!
+Use the "stratis pool list" cmd to monitor the remaining real storage available to the 
+Stratis pools NOT the df cmd.The df command will report that any new Stratis-managed 
+XFS file systems are 1 TiB in size, no matter how much physical storage is currently 
+allocated to the file system.
+
+3.Create a snapshot of a Stratis-managed file system with the stratis filesystem 
+  snapshot command.
+  Ex: 
+   - stratis filesystem snapshot pool1 fs1 snapshot1
+
+--------------------------------------------
+
+Persistently Mounting Stratis File Systems
+
+1.Ensure that the Stratis file systems are persistently mounted, edit /etc/fstab
+  Ex:
+   - lsblk --output=UUID /stratis/pool1/fs1
+   - UUID=31b9363b-add8-4b46-a4bf-c199cd478c55 /dir1 xfs 
+     defaults,x-systemd.requires=stratisd.service 0 0
+
+Important!!!
+If you do not include the x-systemd.requires=stratisd.service mount option in 
+/etc/fstab for each Stratis file system, the machine will fail to start properly 
+and will abort to emergency.target the next time it is rebooted.
+
+
+-------------------------------------------------------
+
+Compressing and Deduplicating Storage with VDO(Virtual Data Optimizer)
+
+VDO
+-is a driver 
+-optimizes the data footprint on block devices
+-is a Linux device mapper driver that reduces disk space usage on block devices, 
+-minimizes the replication of data(saving disk space and increasing data throughput)
+-includes two kernel modules:
+ a. kvdo module, to transparently control data compression, and 
+ b. uds module for deduplication
+
+
+Infrastructure Visual
+
+VM
+-----------
+VDO
+-----------
+Local Blk Device or RAID layer
+
+
+VDO applies three phases to data in the following order to reduce the footprint on storage devices:
+
+1.Zero-Block Elimination;enables the thin provisioning feature in the VDO devices. Filters out data 
+  blocks that contain only zeroes (0) and records the information of those blocks ONLY in the metadata.
+  Nonzero data blocks move on to the next phase.
+
+2.Deduplication; eliminates redundant data blocks.
+
+3.Compression;The kvdo kernel module compresses the data blocks using LZ4 compression and groups them 
+  on 4 KB blocks.
+
+
+Steps:
+
+1.Enabling VDO
+  Ex:
+   - yum install vdo kmod-kvdo -y
+
+2.Creating a VDO Volume
+  Ex:
+   - vdo create --name=vdo1 --device=/dev/vdd --vdoLogicalSize=50G
+
+**If you omit the logical size, the resulting VDO volume gets the same size as its physical device.
+
+3.Analyzing a VDO Volume
+  Ex:
+   - vdo status --name=vdo1
+
+Useful Commands:
+-vdo list;displays the list of VDO volumes that are currently started
+-vdo start  
+-vdo stop
+
+
+
+
+
+
+
+

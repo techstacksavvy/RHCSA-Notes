@@ -1,0 +1,56 @@
+Ch.6 - Creating a Swap Space
+
+Steps: 
+1.Create a partition w/ a fs type "swap-linux"
+  Ex:
+  - parted /dev/sdb1 mkpart swap1 linux-swap 2048s 1001MB
+  - udevadm settle
+
+2.Place a swap signature on the device
+  Ex:
+  - mkswap /dev/sdb1
+
+3.Activate the formatted Swap Space w/ the "swapon" cmd 
+  Ex:
+  - swapon /dev/sdb1
+
+4.Persistently activating Swap Space with /etc/fstab config file
+  Ex:
+  - UUID=39e2667a-9458-42fe-9665-c5c854605881   swap   swap   defaults   0 0
+  - systemctl daemon-reload
+
+5.Setting the Swap Space Priority
+  Ex:
+  - UUID=39e2667a-9458-42fe-9665-c5c854605881   swap   swap  pri=4   0 0
+  - systemctl daemon-reload
+
+(notice that pri=4 has replaced defaults)
+**pri(priority)
+**the kernel uses the swap space w/ the highest priority first
+**default priority is -2
+ 
+Ex: The following example shows three swap spaces defined in /etc/fstab. The kernel uses the last entry first, with pri=10. When that space is full, it us es the second entry, with pri=4. Finally, it uses the first entry, which has  a default priority of -2.
+
+  UUID=af30cbb0-3866-466a-825a-58889a49ef33   swap   swap   defaults  0 0
+  UUID=39e2667a-9458-42fe-9665-c5c854605881   swap   swap   pri=4     0 0
+  UUID=fbd7fa60-b781-44a8-961b-37ac3ef572bf   swap   swap   pri=10    0 0
+
+
+
+Notes:
+
+"The second field is typically reserved for the mount point. However, for swap devices, which are not accessible through the directory structure, this field takes the placeholder value swap."
+
+"When you add or remove an entry in the /etc/fstab file, run thesystemctl daemon-reload command, or reboot the server, for systemd to register the new configuration."
+
+
+More Useful Cmds: 
+
+  swapon -a;     to activate all swap spaces listed in /etc/fstab 
+  swapon --show; to inspect the available swap spaces
+  free;          to inspect the available swap spaces 
+  swapoff;       to deactivate a swap space
+
+
+Cool Cmd:
+expr (I use the is to calculate arithmetic (i.e. expr 5144 + 2547))

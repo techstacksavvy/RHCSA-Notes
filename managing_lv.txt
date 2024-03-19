@@ -1,4 +1,4 @@
-Ch.7 - Managing Logigal Volumes
+Ch.7 - Managing Logical Volumes
 
 LVMs makes managing disk space easier.
 
